@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap');
+        body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
+        .card { background: #1e293b; padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #334155; }
+        .value { font-size: 3rem; font-weight: bold; color: #38bdf8; }
+        .btn-group { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        button { padding: 12px 30px; border-radius: 12px; border: none; font-size: 1rem; cursor: pointer; transition: 0.3s; font-family: 'Kanit', sans-serif; }
+        .btn-on { background-color: #22c55e; color: white; }
+        .btn-off { background-color: #ef4444; color: white; }
+        .btn-on:hover { background-color: #16a34a; }
+        .btn-off:hover { background-color: #dc2626; }
+        .status-box { margin-top: 10px; font-size: 0.9rem; padding: 5px 10px; border-radius: 5px; background: #334155; display: inline-block; }
+        .warning { background-color: #ef4444 !important; color: white; font-weight: bold; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>🏠 ระบบควบคุมบ้าน mini project</h1>
+
+    <div class="dashboard">
+        <div class="card">
+            <div>🌡️ อุณหภูมิและความชื้น</div>
+            <div class="value"><span id="temp">--</span>°C</div>
+            <div>ความชื้น: <span id="humi">--</span>%</div>
+        </div>
+
+        <div class="card">
+            <div>☀️ แสงสว่าง (LDR)</div>
+            <div class="value" id="light_val">--</div>
+            <div id="light_status" class="status-box">รอข้อมูล...</div>
+        </div>
+
+        <div class="card">
+            <div>💨 ตรวจจับควัน/แก๊ส (MQ)</div>
+            <div class="value" id="gas_val">--</div>
+            <div id="gas_status" class="status-box">สถานะ: ปกติ</div>
+        </div>
+
+        <div class="card">
+            <div>💡 หลอดไฟ (Relay 1)</div>
+            <div class="status-box">สถานะ: <b id="st-light">--</b></div>
+            <div class="btn-group">
+                <button class="btn-on" onclick="send('light', 'ON')">เปิด</button>
+                <button class="btn-off" onclick="send('light', 'OFF')">ปิด</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div>🌀 พัดลม (Relay 2)</div>
+            <div class="status-box">สถานะ: <b id="st-fan">--</b></div>
+            <div class="btn-group">
+                <button class="btn-on" onclick="send('fan', 'ON')">เปิด</button>
+                <button class="btn-off" onclick="send('fan', 'OFF')">ปิด</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div>❄️ แอร์จำลอง (Relay 3)</div>
+            <div class="status-box">สถานะ: <b id="st-ac">--</b></div>
+            <div class="btn-group">
+                <button class="btn-on" onclick="send('ac', 'ON')">เปิด</button>
+                <button class="btn-off" onclick="send('ac', 'OFF')">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // *** ตรวจสอบว่า Config นี้ตรงกับในบอร์ด NodeMCU ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyDVK0e02FBue3EW0e7JqbCKPe6YE7zREqE",
+            authDomain: "mini-project-2fa5e.firebaseapp.com",
+            databaseURL: "https://mini-project-2fa5e-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "mini-project-2fa5e",
+            storageBucket: "mini-project-2fa5e.appspot.com",
+            messagingSenderId: "336990756770",
+            appId: "1:336990756770:web:73753e5604463516879cfb"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 1. ดึงค่าเซนเซอร์จาก Path "room"
+        db.ref("room").on("value", (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // อัปเดตตัวเลข
+                document.getElementById("temp").innerText = data.temp !== undefined ? data.temp : "--";
+                document.getElementById("humi").innerText = data.humi !== undefined ? data.humi : "--";
+                document.getElementById("light_val").innerText = data.light !== undefined ? data.light : "--";
+                document.getElementById("gas_val").innerText = data.gas !== undefined ? data.gas : "--";
+
+                // เงื่อนไขสถานะแสง (LDR)
+                const lStatus = document.getElementById("light_status");
+                if (data.light < 500) {
+                    lStatus.innerText = "สถานะ: มืด (เปิดไฟอัตโนมัติได้)";
+                } else {
+                    lStatus.innerText = "สถานะ: สว่าง";
+                }
+
+                // เงื่อนไขสถานะแก๊ส
+                const gStatus = document.getElementById("gas_status");
+                // ถ้าค่ามากกว่า 400 หรือถ้าเป็น Digital Sensor ค่า 1 คือตรวจเจอ
+                if (data.gas > 400 || data.gas == 1) { 
+                    gStatus.innerText = "⚠️ ตรวจพบควัน/แก๊ส!";
+                    gStatus.className = "status-box warning";
+                } else {
+                    gStatus.innerText = "สถานะ: ปกติ";
+                    gStatus.className = "status-box";
+                }
+            }
+        }, (error) => {
+            console.error("Firebase Error: ", error);
+        });
+
+        // 2. ดึงสถานะปุ่มจาก Path "control"
+        db.ref("control").on("value", (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById("st-light").innerText = data.light || "OFF";
+                document.getElementById("st-fan").innerText = data.fan || "OFF";
+                document.getElementById("st-ac").innerText = data.ac || "OFF";
+            }
+        });
+
+        // 3. ฟังก์ชันส่งค่ากลับไปที่ Firebase
+        function send(path, cmd) {
+            db.ref("control/" + path).set(cmd)
+                .then(() => console.log("Sent " + cmd + " to " + path))
+                .catch((err) => alert("ส่งข้อมูลไม่สำเร็จ: " + err.message));
+        }
+    </script>
+</body>
+</html>
