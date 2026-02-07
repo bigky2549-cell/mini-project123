@@ -3,79 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Home Dashboard</title>
+    <title>Smart Home Pro - Monitoring</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap');
-        body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
-        .card { background: #1e293b; padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #334155; }
-        .value { font-size: 3rem; font-weight: bold; color: #38bdf8; }
-        .btn-group { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
-        button { padding: 12px 30px; border-radius: 12px; border: none; font-size: 1rem; cursor: pointer; transition: 0.3s; font-family: 'Kanit', sans-serif; }
-        .btn-on { background-color: #22c55e; color: white; }
-        .btn-off { background-color: #ef4444; color: white; }
-        .btn-on:hover { background-color: #16a34a; }
-        .btn-off:hover { background-color: #dc2626; }
-        .status-box { margin-top: 10px; font-size: 0.9rem; padding: 5px 10px; border-radius: 5px; background: #334155; display: inline-block; }
-        .warning { background-color: #ef4444 !important; color: white; font-weight: bold; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@200;400;600&display=swap');
+        
+        :root {
+            --bg: #0b0e14;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --danger: #f43f5e;
+            --success: #10b981;
+        }
+
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background: radial-gradient(circle at top, #1e293b 0%, #0b0e14 100%);
+            color: #f8fafc; 
+            margin: 0;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        h1 { margin: 40px 0; font-weight: 600; letter-spacing: 1px; text-shadow: 0 0 20px rgba(56, 189, 248, 0.4); }
+
+        .dashboard { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 25px; 
+            width: 90%; 
+            max-width: 1100px; 
+        }
+
+        .card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(12px);
+            padding: 30px; 
+            border-radius: 24px; 
+            text-align: center; 
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+
+        .icon-bg { font-size: 3rem; margin-bottom: 15px; color: var(--accent); opacity: 0.8; }
+
+        .value { font-size: 3.5rem; font-weight: 600; margin: 10px 0; color: #fff; }
+        .unit { font-size: 1.2rem; color: var(--accent); }
+
+        /* Level Indicator */
+        .water-container {
+            width: 100%;
+            height: 10px;
+            background: #334155;
+            border-radius: 10px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+        .water-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transition: width 0.5s ease;
+        }
+
+        .status-badge {
+            margin-top: 15px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.1);
+            display: inline-block;
+        }
+
+        .warning { background: var(--danger) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+
     </style>
 </head>
 <body>
 
-    <h1>🏠 ระบบควบคุมบ้าน mini project</h1>
+    <h1><i class="fa-solid fa-house-signal"></i> Smart Home Dashboard</h1>
 
     <div class="dashboard">
         <div class="card">
-            <div>🌡️ อุณหภูมิและความชื้น</div>
-            <div class="value"><span id="temp">--</span>°C</div>
-            <div>ความชื้น: <span id="humi">--</span>%</div>
+            <div class="icon-bg"><i class="fa-solid fa-faucet-drip"></i></div>
+            <div style="font-size: 1.1rem; opacity: 0.7;">ระดับน้ำ (Ultrasonic)</div>
+            <div class="value"><span id="dist">--</span><span class="unit"> cm</span></div>
+            <div class="water-container">
+                <div id="water-bar" class="water-bar"></div>
+            </div>
+            <div id="water_status" class="status-badge">กำลังโหลด...</div>
         </div>
 
         <div class="card">
-            <div>☀️ แสงสว่าง (LDR)</div>
+            <div class="icon-bg" style="color: #fb923c;"><i class="fa-solid fa-temperature-half"></i></div>
+            <div style="font-size: 1.1rem; opacity: 0.7;">อุณหภูมิห้อง</div>
+            <div class="value"><span id="temp">--</span><span class="unit"> °C</span></div>
+            <div style="font-size: 0.9rem; margin-top: 10px;">ความชื้น: <span id="humi">--</span>%</div>
+        </div>
+
+        <div class="card">
+            <div class="icon-bg" style="color: #fde047;"><i class="fa-solid fa-sun"></i></div>
+            <div style="font-size: 1.1rem; opacity: 0.7;">ความเข้มแสง</div>
             <div class="value" id="light_val">--</div>
-            <div id="light_status" class="status-box">รอข้อมูล...</div>
-        </div>
-
-        <div class="card">
-            <div>💨 ตรวจจับควัน/แก๊ส (MQ)</div>
-            <div class="value" id="gas_val">--</div>
-            <div id="gas_status" class="status-box">สถานะ: ปกติ</div>
-        </div>
-
-        <div class="card">
-            <div>💡 หลอดไฟ (Relay 1)</div>
-            <div class="status-box">สถานะ: <b id="st-light">--</b></div>
-            <div class="btn-group">
-                <button class="btn-on" onclick="send('light', 'ON')">เปิด</button>
-                <button class="btn-off" onclick="send('light', 'OFF')">ปิด</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <div>🌀 พัดลม (Relay 2)</div>
-            <div class="status-box">สถานะ: <b id="st-fan">--</b></div>
-            <div class="btn-group">
-                <button class="btn-on" onclick="send('fan', 'ON')">เปิด</button>
-                <button class="btn-off" onclick="send('fan', 'OFF')">ปิด</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <div>❄️ แอร์จำลอง (Relay 3)</div>
-            <div class="status-box">สถานะ: <b id="st-ac">--</b></div>
-            <div class="btn-group">
-                <button class="btn-on" onclick="send('ac', 'ON')">เปิด</button>
-                <button class="btn-off" onclick="send('ac', 'OFF')">ปิด</button>
-            </div>
+            <div id="light_status" class="status-badge">--</div>
         </div>
     </div>
 
     <script>
-        // *** ตรวจสอบว่า Config นี้ตรงกับในบอร์ด NodeMCU ***
         const firebaseConfig = {
             apiKey: "AIzaSyDVK0e02FBue3EW0e7JqbCKPe6YE7zREqE",
             authDomain: "mini-project-2fa5e.firebaseapp.com",
@@ -89,55 +133,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. ดึงค่าเซนเซอร์จาก Path "room"
+        // ดึงข้อมูลเซนเซอร์
         db.ref("room").on("value", (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // อัปเดตตัวเลข
-                document.getElementById("temp").innerText = data.temp !== undefined ? data.temp : "--";
-                document.getElementById("humi").innerText = data.humi !== undefined ? data.humi : "--";
-                document.getElementById("light_val").innerText = data.light !== undefined ? data.light : "--";
-                document.getElementById("gas_val").innerText = data.gas !== undefined ? data.gas : "--";
+                // อัปเดตอุณหภูมิ
+                document.getElementById("temp").innerText = data.temp || "0";
+                document.getElementById("humi").innerText = data.humi || "0";
+                
+                // อัปเดตแสง
+                document.getElementById("light_val").innerText = data.light || "0";
+                document.getElementById("light_status").innerText = data.light < 500 ? "🌙 กลางคืน" : "☀️ กลางวัน";
 
-                // เงื่อนไขสถานะแสง (LDR)
-                const lStatus = document.getElementById("light_status");
-                if (data.light < 500) {
-                    lStatus.innerText = "สถานะ: มืด (เปิดไฟอัตโนมัติได้)";
-                } else {
-                    lStatus.innerText = "สถานะ: สว่าง";
-                }
+                // อัปเดตระดับน้ำ (Ultrasonic)
+                const distance = data.distance || 0;
+                document.getElementById("dist").innerText = distance;
+                
+                // คำนวณแถบน้ำ (สมมติถังสูง 50cm)
+                let percent = Math.max(0, Math.min(100, (1 - (distance / 50)) * 100));
+                document.getElementById("water-bar").style.width = percent + "%";
 
-                // เงื่อนไขสถานะแก๊ส
-                const gStatus = document.getElementById("gas_status");
-                // ถ้าค่ามากกว่า 400 หรือถ้าเป็น Digital Sensor ค่า 1 คือตรวจเจอ
-                if (data.gas > 400 || data.gas == 1) { 
-                    gStatus.innerText = "⚠️ ตรวจพบควัน/แก๊ส!";
-                    gStatus.className = "status-box warning";
+                const wStatus = document.getElementById("water_status");
+                if (distance > 0 && distance < 10) {
+                    wStatus.innerText = "⚠️ น้ำใกล้เต็ม!";
+                    wStatus.className = "status-badge warning";
                 } else {
-                    gStatus.innerText = "สถานะ: ปกติ";
-                    gStatus.className = "status-box";
+                    wStatus.innerText = "✅ ระดับปกติ";
+                    wStatus.className = "status-badge";
                 }
             }
-        }, (error) => {
-            console.error("Firebase Error: ", error);
         });
-
-        // 2. ดึงสถานะปุ่มจาก Path "control"
-        db.ref("control").on("value", (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById("st-light").innerText = data.light || "OFF";
-                document.getElementById("st-fan").innerText = data.fan || "OFF";
-                document.getElementById("st-ac").innerText = data.ac || "OFF";
-            }
-        });
-
-        // 3. ฟังก์ชันส่งค่ากลับไปที่ Firebase
-        function send(path, cmd) {
-            db.ref("control/" + path).set(cmd)
-                .then(() => console.log("Sent " + cmd + " to " + path))
-                .catch((err) => alert("ส่งข้อมูลไม่สำเร็จ: " + err.message));
-        }
     </script>
 </body>
 </html>
